@@ -2,6 +2,7 @@
 
 FIXME: my new application.
 
+shift+k show tool tip
 ## Installation
 
 Download from https://github.com/athosone/lox
