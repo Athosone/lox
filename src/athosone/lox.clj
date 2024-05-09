@@ -1,7 +1,7 @@
 (ns athosone.lox
   (:require
-   [athosone.reporter.error :refer [error reset-error had-error]]
-   [athosone.scanner.scan :refer [new-scanner]]))
+   [athosone.reporter.error :refer [error had-error reset-error]]
+   [athosone.scanner.scan :refer [new-scanner scan-tokens]]))
 
 (defn print-fl [msg]
   (print msg)
@@ -9,7 +9,7 @@
 
 (defn run [source]
   (let [scanner (new-scanner source)
-        tokens (scanner scan)]
+        tokens (scan-tokens scanner)]
     (for [token tokens]
       (println token))))
 
