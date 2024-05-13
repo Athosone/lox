@@ -48,3 +48,6 @@
    ::lexeme lexeme
    ::literal literal
    ::line line})
+
+(comment
+  (token :identifier "foo" nil 1))

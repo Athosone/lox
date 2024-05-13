@@ -2,7 +2,7 @@
 
 (def had-error (atom false))
 
-(defn report [line where msg]
+(defn- report [line where msg]
   (reset! had-error true)
   (println (str "[line " line "] Error" where ": " msg)))
 
