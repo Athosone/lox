@@ -16,7 +16,7 @@
 
 (defn add-token
   ([type scanner] (add-token type nil scanner))
-  ([type literal {:keys [source current start line] :as scanner}]
+  ([type literal {:keys [source start current line] :as scanner}]
    (update scanner :tokens conj  {::token/type type
                                   ::token/text (subs source start current)
                                   ::token/line line
@@ -48,25 +48,26 @@
                  (add-token ::token/bang-equal (advance scanner))
                  (add-token ::token/bang scanner))
       (= c \=) (if (match scanner \=)
-                 (add-token ::token/equal-equal scanner)
+                 (add-token ::token/equal-equal (advance scanner))
                  (add-token ::token/equal scanner))
       (= c \<) (if (match scanner \=)
-                 (add-token ::token/less-equal scanner)
+                 (add-token ::token/less-equal (advance scanner))
                  (add-token ::token/less scanner))
       (= c \>) (if (match scanner \=)
-                 (add-token ::token/greater-equal scanner)
+                 (add-token ::token/greater-equal (advance scanner))
                  (add-token ::token/greater scanner))
       (= c \/) (if (match scanner \/)
-                 (do
-                   (loop [scanner scanner]
-                     (if (not (or (match scanner \newline)
-                                  (is-at-end? scanner)))
-                       (recur (update scanner :current inc))
-                       scanner)))
+                 (loop [scanner scanner]
+                   (if (not (or (match scanner \newline)
+                                (is-at-end? scanner)))
+                     (recur (advance scanner))
+                     scanner))
                  (add-token ::token/slash scanner))
-      (= c \newline) (update scanner :line inc)
+      (= c \space) scanner
+      (= c \tab) scanner
+      (= c \newline) (advance (update scanner :line inc))
       :else (update scanner :errors conj
-                    (error/error (:line scanner) "Unexpected character")))))
+                    (error/error (:line scanner) (current-char scanner) "Unexpected character")))))
 
 (defn inc-current [scanner] (update scanner :start inc))
 
@@ -81,8 +82,9 @@
                   (inc-current)))))))
 
 (comment
-  (def scanner (new-scanner "(+ 123)"))
-  (def scanner (new-scanner "=="))
+  (def scanner (new-scanner "("))
+  (def scanner (new-scanner "==
+!="))
   (is-at-end? (assoc scanner :current 8000))
   (nth (:source scanner) 0)
   (scan-tokens (assoc scanner :current 0))
@@ -91,9 +93,17 @@
                 (assoc :tokens (conj  (:tokens scanner) (scan-token scanner)))
                 (update scanner :current inc)))
   (def expected \=)
+
+  (scan-token scanner)
+  (loop [scanner scanner]
+    (when (not (or (match scanner \newline) (is-at-end? scanner)))
+      (println (current-char scanner) scanner)
+      (recur (advance scanner))))
+
   (-> scanner
       (scan-token)
       (inc-current))
+
   (println news))
 
 

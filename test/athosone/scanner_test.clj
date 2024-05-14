@@ -23,6 +23,13 @@
     (is (= 2 (count tokens)))
     (is (= ::token/equal (::token/type (first tokens))))))
 
+(deftest slash-as-character
+  (testing "given a slash as character when scanning token should get a slash token")
+  (let [test-scanner (scan/new-scanner "/")
+        tokens (scan/scan-tokens test-scanner)]
+    (is (= 2 (count tokens)))
+    (is (= ::token/slash (::token/type (first tokens))))))
+
 (comment
   (require '[clojure.spec.alpha :refer [explain]])
   (def scanner (scan/scan-tokens (scan/new-scanner "!=")))
