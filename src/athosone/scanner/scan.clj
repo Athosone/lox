@@ -65,24 +65,25 @@
                  (add-token ::token/slash scanner))
       (= c \space) scanner
       (= c \tab) scanner
-      (= c \newline) (advance (update scanner :line inc))
+      (= c \r) scanner
+      (= c \newline) (update scanner :line inc)
       :else (update scanner :errors conj
                     (error/error (:line scanner) (current-char scanner) "Unexpected character")))))
 
-(defn inc-current [scanner] (update scanner :start inc))
+(defn inc-current [scanner] (assoc scanner :start (:current scanner)))
 
 (defn scan-tokens
     ;; Returns a vector of tokens
   ([sc]
    (loop [scanner sc]
      (if (is-at-end? scanner)
-       (conj (:tokens scanner) (add-token ::token/eof scanner))
-       (recur (-> scanner
-                  (scan-token)
-                  (inc-current)))))))
+       (:tokens (add-token ::token/eof scanner))
+       (recur (->> scanner
+                   scan-token
+                   inc-current))))))
 
 (comment
-  (def scanner (new-scanner "("))
+  (def scanner (new-scanner "!="))
   (def scanner (new-scanner "==
 !="))
   (is-at-end? (assoc scanner :current 8000))
@@ -95,6 +96,7 @@
   (def expected \=)
 
   (scan-token scanner)
+  (scan-tokens scanner)
   (loop [scanner scanner]
     (when (not (or (match scanner \newline) (is-at-end? scanner)))
       (println (current-char scanner) scanner)
