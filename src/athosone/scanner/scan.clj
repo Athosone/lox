@@ -31,6 +31,20 @@
 (defn- advance [scanner]
   (update scanner :current inc))
 
+(defn- scan-string [scanner]
+  (loop [scanner scanner]
+    (if (not (or (match scanner \") (is-at-end? scanner)))
+      (if (match scanner \newline)
+        (recur (advance (update scanner :line inc)))
+        (recur (advance scanner)))
+      (if (is-at-end? scanner)
+        (update scanner :errors conj (error/error (:line scanner) (current-char scanner) "Unterminated string"))
+        (let [advanced (advance scanner)
+              source (:source scanner)
+              start (inc (:start scanner))
+              current (:current scanner)]
+          (add-token ::token/string (subs source start current) advanced))))))
+
 (defn scan-token [scanner]
   (let [c (nth (:source scanner) (:current scanner))
         scanner (update scanner :current inc)]
@@ -67,6 +81,7 @@
       (= c \tab) scanner
       (= c \r) scanner
       (= c \newline) (update scanner :line inc)
+      (= c \") (scan-string scanner)
       :else (update scanner :errors conj
                     (error/error (:line scanner) (current-char scanner) "Unexpected character")))))
 
@@ -84,11 +99,13 @@
 
 (comment
   (def scanner (new-scanner "!="))
-  (def scanner (new-scanner "==
+  (def scanner (new-scanner "//==
 !="))
   (is-at-end? (assoc scanner :current 8000))
   (nth (:source scanner) 0)
   (scan-tokens (assoc scanner :current 0))
+  (scan-tokens (new-scanner "==\"Hello
+                            les gens\""))
   (assoc scanner :current 0)
   (def news (-> scanner
                 (assoc :tokens (conj  (:tokens scanner) (scan-token scanner)))
