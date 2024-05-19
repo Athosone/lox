@@ -45,8 +45,17 @@
               current (:current scanner)]
           (add-token ::token/string (subs source start current) advanced))))))
 
+(defn- is-digit? [c] (Character/isDigit c))
+
+(defn- scan-digit [scanner]
+  (cond
+    (is-at-end? scanner) (add-token ::token/number (Double/parseDouble (subs (:source scanner) (:start scanner) (:current scanner))) scanner)
+    (is-digit? (current-char scanner)) (recur (advance scanner))
+    (and (= (current-char scanner) \.) (is-digit? (current-char (advance scanner)))) (recur (advance scanner))
+    :else (add-token ::token/number (Double/parseDouble (subs (:source scanner) (:start scanner) (:current scanner))) scanner)))
+
 (defn scan-token [scanner]
-  (let [c (nth (:source scanner) (:current scanner))
+  (let [c (current-char scanner)
         scanner (update scanner :current inc)]
     (cond
       (= c \() (add-token ::token/left-paren scanner)
@@ -77,13 +86,14 @@
                      (recur (advance scanner))
                      scanner))
                  (add-token ::token/slash scanner))
+      (is-digit? c) (scan-digit scanner)
       (= c \space) scanner
       (= c \tab) scanner
       (= c \r) scanner
       (= c \newline) (update scanner :line inc)
       (= c \") (scan-string scanner)
       :else (update scanner :errors conj
-                    (error/error (:line scanner) (current-char scanner) "Unexpected character")))))
+                    (error/error (:line scanner) (:current scanner) "Unexpected character")))))
 
 (defn inc-current [scanner] (assoc scanner :start (:current scanner)))
 
@@ -103,9 +113,11 @@
 !="))
   (is-at-end? (assoc scanner :current 8000))
   (nth (:source scanner) 0)
-  (scan-tokens (assoc scanner :current 0))
+  (scan-tokens (new-scanner "!=123.2222 456 {} "))
   (scan-tokens (new-scanner "==\"Hello
-                            les gens\""))
+                            les gens\"
+                            {456}"))
+  (scan-tokens (new-scanner "{}"))
   (assoc scanner :current 0)
   (def news (-> scanner
                 (assoc :tokens (conj  (:tokens scanner) (scan-token scanner)))
