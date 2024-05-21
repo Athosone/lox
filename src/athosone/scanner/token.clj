@@ -1,47 +1,7 @@
 (ns athosone.scanner.token)
 
-(def token-types-set
-  #{"(" ")" "{" "}" "," "." "-" "+" ";" "/" "*" "!" "!=" "=" "==" ">" ">=" "<" "<=" "identifier" "string" "number" "and" "class" "else" "false" "fun" "for" "if" "nil" "or" "print" "return" "super" "this" "true" "var" "while" "eof"})
-(def token-types
-  {:left-paren "("
-   :right-paren ")"
-   :left-brace "{"
-   :right-brace "}"
-   :comma ","
-   :dot "."
-   :minus "-"
-   :plus "+"
-   :semicolon ";"
-   :slash "/"
-   :star "*"
-   :bang "!"
-   :bang-equal "!="
-   :equal "="
-   :equal-equal "=="
-   :greater ">"
-   :greater-equal ">="
-   :less "<"
-   :less-equal "<="
-   :identifier "identifier"
-   :string "string"
-   :number "number"
-   :and "and"
-   :class "class"
-   :else "else"
-   :false "false"
-   :fun "fun"
-   :for "for"
-   :if "if"
-   :nil "nil"
-   :or "or"
-   :print "print"
-   :return "return"
-   :super "super"
-   :this "this"
-   :true "true"
-   :var "var"
-   :while "while"
-   :eof "eof"})
+(def reserved-words
+  #{"and" "class" "else" "false" "for" "fun" "if" "nil" "or" "print" "return" "super" "this" "true" "var" "while"})
 
 (defn token [type lexeme literal line]
   {::type type
@@ -49,5 +9,9 @@
    ::literal literal
    ::line line})
 
+(defn keywordize-token [t]
+  (keyword "athosone.scanner.token" t))
+
 (comment
+  (keywordize-token "for")
   (token :identifier "foo" nil 1))

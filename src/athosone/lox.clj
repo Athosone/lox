@@ -10,8 +10,8 @@
 (defn run [source]
   (let [scanner (new-scanner source)
         tokens (scan-tokens scanner)]
-    (for [token tokens]
-      (println token))))
+    (doseq [t tokens]
+      (println t))))
 
 (defn run-file [path]
   (let [source (slurp path)]
@@ -21,15 +21,13 @@
       (System/exit 0))))
 
 (defn run-prompt []
-  (loop []
-    (print-fl "> ")
-    (let [line (read-line)]
-      (if line
-        (do
-          (run line)
-          (reset-error)
-          (recur))
-        (println "Bye!")))))
+  (print-fl "> ")
+  (if-let [line (read-line)]
+    (do
+      (run line)
+      (reset-error)
+      (recur))
+    (println "Goodbye!")))
 
 (defn -main
   "I don't do a whole lot ... yet."
@@ -42,11 +40,14 @@
 ;; https://craftinginterpreters.com/scanning.html#error-handling
 (comment
   (use 'athosone.lox :reload)
-  (run "print 1 + 2;")
+  (run "1 + 2")
   (error 1 "Error message")
   @had-error
-
+  (def abc ["a", "b", "c"])
+  (doseq [a abc]
+    (println a))
   (run-file "Makefile")
+  (run-prompt)
 
   (-main))
 

@@ -22,7 +22,8 @@
                                   ::token/line line
                                   ::token/literal literal})))
 
-(defn- current-char [& {:keys [source current]}] (nth source current))
+(defn- current-char [& {:keys [source current]}]
+  (nth source current))
 
 (defn- match [scanner expected]
   (and (not (is-at-end? scanner))
@@ -53,6 +54,20 @@
     (is-digit? (current-char scanner)) (recur (advance scanner))
     (and (= (current-char scanner) \.) (is-digit? (current-char (advance scanner)))) (recur (advance scanner))
     :else (add-token ::token/number (Double/parseDouble (subs (:source scanner) (:start scanner) (:current scanner))) scanner)))
+
+(defn- is-alpha? [c]
+  (contains? (set "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_") c))
+
+(defn- is-alphanum? [c]
+  (or (is-alpha? c) (is-digit? c)))
+
+(defn- scan-identifier [scanner]
+  (if (or (is-at-end? scanner) (not (is-alphanum? (current-char scanner))))
+    (let [text (subs (:source scanner) (:start scanner) (:current scanner))]
+      (if (token/reserved-words text)
+        (add-token (token/keywordize-token text) scanner)
+        (add-token ::token/identifier scanner)))
+    (recur (advance scanner))))
 
 (defn scan-token [scanner]
   (let [c (current-char scanner)
@@ -86,12 +101,13 @@
                      (recur (advance scanner))
                      scanner))
                  (add-token ::token/slash scanner))
-      (is-digit? c) (scan-digit scanner)
       (= c \space) scanner
       (= c \tab) scanner
       (= c \r) scanner
       (= c \newline) (update scanner :line inc)
       (= c \") (scan-string scanner)
+      (is-digit? c) (scan-digit scanner)
+      (is-alpha? c) (scan-identifier scanner)
       :else (update scanner :errors conj
                     (error/error (:line scanner) (:current scanner) "Unexpected character")))))
 
@@ -117,13 +133,14 @@
   (scan-tokens (new-scanner "==\"Hello
                             les gens\"
                             {456}"))
-  (scan-tokens (new-scanner "{}"))
+  (scan-tokens (new-scanner "{}
+                            for
+                            while"))
+  (scan-tokens (new-scanner "ffff"))
   (assoc scanner :current 0)
   (def news (-> scanner
                 (assoc :tokens (conj  (:tokens scanner) (scan-token scanner)))
                 (update scanner :current inc)))
-  (def expected \=)
-
   (scan-token scanner)
   (scan-tokens scanner)
   (loop [scanner scanner]
