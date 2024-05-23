@@ -44,8 +44,16 @@
 ;       (println "  (println (accept (Binary. nil nil nil) nil))")
 ;       (println ")")))
 
+(defprotocol writer
+  (write [this s]))
+
 (defn define-ast [w]
-  (.write w "(ns athosone.ast)"))
+  (.write w "(ns athosone.ast)")
+  (.write w "(defrecord Binary [lhs operator rhs])")
+  (.write w "(defrecord Grouping [expression])")
+  (.write w "(defrecord Literal [value])")
+  (.write w "(defrecord Unary [operator right])")
+  (.write w "(defprotocol Visitor)")
 
 (defn generate-ast []
   (let [[output-dir] *command-line-args*
@@ -56,7 +64,11 @@
 (comment
   (spit "/tmp/ast.clj" "")
   (with-open [w (clojure.java.io/writer  "/tmp/ast.clj" :append false)]
-    (define-ast w))
+    (define-ast w)
+    (println (slurp "/tmp/ast.clj")))
   (slurp "/tmp/ast.clj")
+  ;; Create stdout writer
+  (binding [*out* (io/writer *out*)]
+    (define-ast *out*))
 
   ())
