@@ -17,11 +17,8 @@
 (defn add-token
   ([type scanner] (add-token type nil scanner))
   ([type literal {:keys [source start current line] :as scanner}]
-   (update scanner :tokens conj  {::token/type type
-                                  ;; This represent a Lexeme
-                                  ::token/text (subs source start current)
-                                  ::token/line line
-                                  ::token/literal literal})))
+   (update scanner :tokens conj
+           (token/token type (subs source start current) literal line))))
 
 (defn- current-char [& {:keys [source current]}]
   (nth source current))
