@@ -1,6 +1,8 @@
 (ns athosone.parser
-  (:require [athosone.scanner.token :as token]
-            [athosone.ast :as ast]))
+  (:require
+   [athosone.ast :as ast]
+   [athosone.prettyprinter :refer [pretty-print]]
+   [athosone.scanner.token :as token]))
 
 (defn new-parser [tokens]
   {:tokens tokens :current 0 :expr nil})
@@ -8,23 +10,24 @@
 (defn- current [{:keys [current tokens]}]
   (tokens current))
 
-(defn- previous [parser] (current (update parser :current dec)))
+(defn- token-type [parser] (::token/type (current parser)))
+(defn- token-line [parser] (::token/line (current parser)))
 
-(defn- match [parser token]
-  (= (current parser) token))
-
-(defn- is-at-end? [parser] (= (current parser) ::token/eof))
+(declare expression)
 
 (defn append-expr [parser expr] (assoc-in parser [:expr] expr))
 
 (defn- advance [p]
-  (if (not (= (current p) ::token/eof))
+  (if (not (= (token-type p) ::token/eof))
     (update p :current inc)
     p))
 
 (defn- primary-grouping [parser]
   (let [exp (expression parser)]
-    (append-expr parser exp)))
+    (if (= (::token/type (current exp)) ::token/right-paren)
+      (append-expr (advance exp) (ast/grouping (:expr exp)))
+      (throw (ex-info (format "Expect right-paren after expression: %s at line: %d" (token-type exp) (token-line exp))
+                      {:causes #{:missing-expr "Should have a right paren"}})))))
 
 (defn primary [parser]
   (let [operator (current parser)
@@ -36,7 +39,9 @@
       (= operator-type ::token/true) (append-expr advanced (ast/literal true))
       (= operator-type ::token/nil) (append-expr advanced (ast/literal nil))
       (or (= operator-type ::token/string) (= operator-type ::token/number)) (append-expr advanced (ast/literal value))
-      (= operator-type ::token/left-paren) (primary-grouping advanced))))
+      (= operator-type ::token/left-paren) (primary-grouping advanced)
+      :else (throw (ex-info (format "%s: expect epression instead" (current parser))
+                            {:causes #{:lexeme (current parser)}})))))
 
 (defn unary [parser]
   (let [operator (current parser)
@@ -84,6 +89,19 @@
         (recur (append-expr (term advanced) (ast/binary lhs operator (:expr (term advanced)))))
         p))))
 
+;; Trying to refactor binary expressions
+;; (defn- new-function [parser token-set downwardfn]
+;;   (loop [p (downwardfn parser)]
+;;     (let [operator (current p)
+;;           operator-type (::token/type operator)
+;;           advanced (advance p)
+;;           lhs (:expr p)]
+;;       (if (token-set operator-type)
+;;         (let [right (downwardfn advanced)
+;;               right-expr (:expr right)]
+;;           (recur (append-expr right (ast/binary lhs operator right-expr))))
+;;         p))))
+
 (defn equality [parser]
   (loop [p (comparison parser)]
     (let [operator (current p)
@@ -107,6 +125,8 @@
   (def p (new-parser tokens))
 
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * -1 - -2 == 3"))))))
+  (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * (-1 + -1) - -2 == 3"))))))
+  (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "-9 - (1 + 1 * (1 / 2)"))))))
   (prn p)
   (assoc-in p [:expr] "hellp")
 
