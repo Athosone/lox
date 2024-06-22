@@ -14,6 +14,7 @@
 (defn- token-line [parser] (::token/line (current parser)))
 
 (declare expression)
+(declare binary-fn)
 
 (defn append-expr [parser expr] (assoc-in parser [:expr] expr))
 
@@ -55,77 +56,90 @@
       (primary parser))))
 
 (defn factor [parser]
-  (loop [p (unary parser)]
-    (let [operator (current p)
-          operator-type (::token/type operator)
-          advanced (advance p)
-          lhs (:expr p)]
-      (if (or (= operator-type ::token/star)
-              (= operator-type ::token/slash))
-        (recur (append-expr (unary advanced) (ast/binary lhs operator (:expr (unary advanced)))))
-        p))))
+  (binary-fn parser #{::token/star ::token/slash} unary))
 
+  ; (loop [p (unary parser)]
+  ;   (let [operator (current p)
+  ;         operator-type (::token/type operator)
+  ;         advanced (advance p)
+  ;         lhs (:expr p)]
+  ;     (if (or (= operator-type ::token/star)
+  ;             (= operator-type ::token/slash))
+  ;       (recur (append-expr (unary advanced) (ast/binary lhs operator (:expr (unary advanced)))))
+  ;       p))))
+  ;
 (defn term [parser]
-  (loop [p (factor parser)]
-    (let [operator (current p)
-          operator-type (::token/type operator)
-          advanced (advance p)
-          lhs (:expr p)]
-      (if (or (= operator-type ::token/minus)
-              (= operator-type ::token/plus))
-        (recur (append-expr (factor advanced) (ast/binary lhs operator (:expr (factor advanced)))))
-        p))))
+  (binary-fn parser #{::token/plus ::token/minus} factor))
+
+  ; (loop [p (factor parser)]
+  ;   (let [operator (current p)
+  ;         operator-type (::token/type operator)
+  ;         advanced (advance p)
+  ;         lhs (:expr p)]
+  ;     (if (or (= operator-type ::token/minus)
+  ;             (= operator-type ::token/plus))
+  ;       (recur (append-expr (factor advanced) (ast/binary lhs operator (:expr (factor advanced)))))
+  ;       p))))
 
 (defn comparison [parser]
-  (loop [p (term parser)]
-    (let [operator (current p)
-          operator-type (::token/type operator)
-          advanced (advance p)
-          lhs (:expr p)]
-      (if (or (= operator-type ::token/greater-equal)
-              (= operator-type ::token/greater)
-              (= operator-type ::token/less-equal)
-              (= operator-type ::token/less))
-        (recur (append-expr (term advanced) (ast/binary lhs operator (:expr (term advanced)))))
-        p))))
+  (binary-fn parser #{::token/greater-equal ::token/greater ::token/less-equal ::token/less} term))
+
+  ; (loop [p (term parser)]
+  ;   (let [operator (current p)
+  ;         operator-type (::token/type operator)
+  ;         advanced (advance p)
+  ;         lhs (:expr p)]
+  ;     (if (or (= operator-type ::token/greater-equal)
+  ;             (= operator-type ::token/greater)
+  ;             (= operator-type ::token/less-equal)
+  ;             (= operator-type ::token/less))
+  ;       (recur (append-expr (term advanced) (ast/binary lhs operator (:expr (term advanced)))))
+  ;       p))))
 
 ;; Trying to refactor binary expressions
-;; (defn- new-function [parser token-set downwardfn]
-;;   (loop [p (downwardfn parser)]
-;;     (let [operator (current p)
-;;           operator-type (::token/type operator)
-;;           advanced (advance p)
-;;           lhs (:expr p)]
-;;       (if (token-set operator-type)
-;;         (let [right (downwardfn advanced)
-;;               right-expr (:expr right)]
-;;           (recur (append-expr right (ast/binary lhs operator right-expr))))
-;;         p))))
-
-(defn equality [parser]
-  (loop [p (comparison parser)]
+(defn- binary-fn [parser token-set downwardfn]
+  (loop [p (downwardfn parser)]
     (let [operator (current p)
           operator-type (::token/type operator)
           advanced (advance p)
           lhs (:expr p)]
-      (if (or (= operator-type ::token/equal-equal) (= operator-type ::token/bang-equal))
-        (let [right (comparison advanced)
+      (if (token-set operator-type)
+        (let [right (downwardfn advanced)
               right-expr (:expr right)]
           (recur (append-expr right (ast/binary lhs operator right-expr))))
         p))))
 
+(defn equality [parser]
+  (binary-fn parser #{::token/equal-equal ::token/bang-equal} comparison))
+  ; (loop [p (comparison parser)]
+  ;   (let [operator (current p)
+  ;         operator-type (::token/type operator)
+  ;         advanced (advance p)
+  ;         lhs (:expr p)]
+  ;     (if (or (= operator-type ::token/equal-equal) (= operator-type ::token/bang-equal))
+  ;       (let [right (comparison advanced)
+  ;             right-expr (:expr right)]
+  ;         (recur (append-expr right (ast/binary lhs operator right-expr))))
+  ;       p))))
+  ;
 (defn expression [parser] (equality parser))
 
 (comment
   (require
    '[athosone.prettyprinter :refer [pretty-print]]
    '[athosone.scanner.scan :refer [scan-tokens new-scanner]])
+  (if (#{"toto" "tata"} "toto")
+    (println "yes")
+    (println "no"))
   (def source "1 == 1")
   (def tokens (scan-tokens (new-scanner source)))
   (def p (new-parser tokens))
 
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * -1 - -2 == 3"))))))
+  ; "(== (- (* 1.0 (group (+ (- 1.0) (- 1.0)))) (- 2.0)) 3.0)"
+  ; "(== (- (* 1.0 (group (+ (- 1.0) (- 1.0)))) (- 2.0)) 3.0)"
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * (-1 + -1) - -2 == 3"))))))
+
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "-9 - (1 + 1 * (1 / 2)"))))))
   (prn p)
   (assoc-in p [:expr] "hellp")
