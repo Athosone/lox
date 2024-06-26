@@ -2,6 +2,7 @@
   (:require
    [athosone.ast :as ast]
    [athosone.prettyprinter :refer [pretty-print]]
+   [athosone.reporter.error :refer [error-at-token]]
    [athosone.scanner.token :as token]))
 
 (defn new-parser [tokens]
@@ -23,12 +24,18 @@
     (update p :current inc)
     p))
 
+(defn- consume [parser expected-token-type]
+  (if-not (= expected-token-type (token-type parser))
+    (let [token (current parser)
+          msg (format "Expected %s token instead of %s"
+                      expected-token-type (token-type parser))]
+      (error-at-token token msg)
+      (throw (ex-info msg {:expected-token-type expected-token-type})))
+    (advance parser)))
+
 (defn- primary-grouping [parser]
   (let [exp (expression parser)]
-    (if (= (::token/type (current exp)) ::token/right-paren)
-      (append-expr (advance exp) (ast/grouping (:expr exp)))
-      (throw (ex-info (format "Expect right-paren after expression: %s at line: %d" (token-type exp) (token-line exp))
-                      {:causes #{:missing-expr "Should have a right paren"}})))))
+    (append-expr (consume exp ::token/right-paren) (ast/grouping (:expr exp)))))
 
 (defn primary [parser]
   (let [token (current parser)
