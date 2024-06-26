@@ -31,95 +31,94 @@
                       {:causes #{:missing-expr "Should have a right paren"}})))))
 
 (defn primary [parser]
-  (let [operator (current parser)
-        operator-type (::token/type operator)
-        value (::token/literal operator)
+  (let [token (current parser)
+        token-type (::token/type token)
+        value (::token/literal token)
         advanced (advance parser)]
     (cond
-      (= operator-type ::token/false) (append-expr advanced (ast/literal false))
-      (= operator-type ::token/true) (append-expr advanced (ast/literal true))
-      (= operator-type ::token/nil) (append-expr advanced (ast/literal nil))
-      (or (= operator-type ::token/string) (= operator-type ::token/number)) (append-expr advanced (ast/literal value))
-      (= operator-type ::token/left-paren) (primary-grouping advanced)
+      (= token-type ::token/false) (append-expr advanced (ast/literal false))
+      (= token-type ::token/true) (append-expr advanced (ast/literal true))
+      (= token-type ::token/nil) (append-expr advanced (ast/literal nil))
+      (or (= token-type ::token/string) (= token-type ::token/number)) (append-expr advanced (ast/literal value))
+      (= token-type ::token/left-paren) (primary-grouping advanced)
       :else (throw (ex-info (format "%s: expect epression instead" (current parser))
                             {:causes #{:lexeme (current parser)}})))))
 
 (defn unary [parser]
-  (let [operator (current parser)
-        operator-type (::token/type operator)
+  (let [token (current parser)
+        token-type (::token/type token)
         advanced (advance parser)]
-    (if (or (= operator-type ::token/minus)
-            (= operator-type ::token/banq))
+    (if (or (= token-type ::token/minus)
+            (= token-type ::token/banq))
       (let [right (unary advanced)
             expr (:expr right)]
-        (append-expr right (ast/unary operator expr)))
+        (append-expr right (ast/unary token expr)))
       (primary parser))))
 
 (defn factor [parser]
   (binary-fn parser #{::token/star ::token/slash} unary))
 
   ; (loop [p (unary parser)]
-  ;   (let [operator (current p)
-  ;         operator-type (::token/type operator)
+  ;   (let [token (current p)
+  ;         token-type (::token/type token)
   ;         advanced (advance p)
   ;         lhs (:expr p)]
-  ;     (if (or (= operator-type ::token/star)
-  ;             (= operator-type ::token/slash))
-  ;       (recur (append-expr (unary advanced) (ast/binary lhs operator (:expr (unary advanced)))))
+  ;     (if (or (= token-type ::token/star)
+  ;             (= token-type ::token/slash))
+  ;       (recur (append-expr (unary advanced) (ast/binary lhs token (:expr (unary advanced)))))
   ;       p))))
   ;
 (defn term [parser]
   (binary-fn parser #{::token/plus ::token/minus} factor))
 
   ; (loop [p (factor parser)]
-  ;   (let [operator (current p)
-  ;         operator-type (::token/type operator)
+  ;   (let [token (current p)
+  ;         token-type (::token/type token)
   ;         advanced (advance p)
   ;         lhs (:expr p)]
-  ;     (if (or (= operator-type ::token/minus)
-  ;             (= operator-type ::token/plus))
-  ;       (recur (append-expr (factor advanced) (ast/binary lhs operator (:expr (factor advanced)))))
+  ;     (if (or (= token-type ::token/minus)
+  ;             (= token-type ::token/plus))
+  ;       (recur (append-expr (factor advanced) (ast/binary lhs token (:expr (factor advanced)))))
   ;       p))))
 
 (defn comparison [parser]
   (binary-fn parser #{::token/greater-equal ::token/greater ::token/less-equal ::token/less} term))
 
   ; (loop [p (term parser)]
-  ;   (let [operator (current p)
-  ;         operator-type (::token/type operator)
+  ;   (let [token (current p)
+  ;         token-type (::token/type token)
   ;         advanced (advance p)
   ;         lhs (:expr p)]
-  ;     (if (or (= operator-type ::token/greater-equal)
-  ;             (= operator-type ::token/greater)
-  ;             (= operator-type ::token/less-equal)
-  ;             (= operator-type ::token/less))
-  ;       (recur (append-expr (term advanced) (ast/binary lhs operator (:expr (term advanced)))))
+  ;     (if (or (= token-type ::token/greater-equal)
+  ;             (= token-type ::token/greater)
+  ;             (= token-type ::token/less-equal)
+  ;             (= token-type ::token/less))
+  ;       (recur (append-expr (term advanced) (ast/binary lhs token (:expr (term advanced)))))
   ;       p))))
 
-;; Trying to refactor binary expressions
 (defn- binary-fn [parser token-set downwardfn]
   (loop [p (downwardfn parser)]
-    (let [operator (current p)
-          operator-type (::token/type operator)
+    (let [token (current p)
+          token-type (::token/type token)
           advanced (advance p)
           lhs (:expr p)]
-      (if (token-set operator-type)
+      (if (token-set token-type)
         (let [right (downwardfn advanced)
               right-expr (:expr right)]
-          (recur (append-expr right (ast/binary lhs operator right-expr))))
+          (recur (append-expr right (ast/binary lhs token right-expr))))
         p))))
 
 (defn equality [parser]
   (binary-fn parser #{::token/equal-equal ::token/bang-equal} comparison))
   ; (loop [p (comparison parser)]
-  ;   (let [operator (current p)
-  ;         operator-type (::token/type operator)
+  ;   (let [token (current p)
+  ;         token-type (::token/type token)
   ;         advanced (advance p)
   ;         lhs (:expr p)]
-  ;     (if (or (= operator-type ::token/equal-equal) (= operator-type ::token/bang-equal))
+  ;     (if (or (= token-type ::token/equal-equal) (= token-type ::token/bang-equal))
   ;       (let [right (comparison advanced)
   ;             right-expr (:expr right)]
-  ;         (recur (append-expr right (ast/binary lhs operator right-expr))))
+  ;         (recur (append-expr right (ast/binary lhs token right-expr))))
   ;       p))))
   ;
 (defn expression [parser] (equality parser))
