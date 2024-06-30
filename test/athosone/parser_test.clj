@@ -1,7 +1,7 @@
 (ns athosone.parser-test
   (:require
    [athosone.ast :as ast]
-   [athosone.parser :as parser]
+   [athosone.parser :as parser :refer [synchronize]]
    [athosone.scanner.scan :refer [new-scanner scan-tokens]]
    [athosone.scanner.token :as token]
    [clojure.test :refer :all]))
@@ -13,6 +13,12 @@
       parser/new-parser))
 
 (defn- token-type [token] (:type token))
+
+(deftest synchronize-test
+  (testing "Given a parser when a boundary is found then the current position matches that boundary"
+    (let [p (parser-from-str "1 == fun -2")
+          s (synchronize p)]
+      (is (= 2 (:current s))))))
 
 (deftest negative-unary
   (testing "Given a negative number when parsing then create a unary element"

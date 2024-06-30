@@ -5,6 +5,10 @@
    [athosone.reporter.error :refer [error-at-token]]
    [athosone.scanner.token :as token]))
 
+(declare comma)
+(declare expression)
+(declare binary-fn)
+
 (defn new-parser [tokens]
   {:tokens tokens :current 0 :expr nil})
 
@@ -12,17 +16,30 @@
   (tokens current))
 
 (defn- token-type [parser] (::token/type (current parser)))
-(defn- token-line [parser] (::token/line (current parser)))
 
-(declare expression)
-(declare binary-fn)
-
-(defn append-expr [parser expr] (assoc-in parser [:expr] expr))
+(defn- append-expr [parser expr] (assoc-in parser [:expr] expr))
 
 (defn- advance [p]
   (if (not (= (token-type p) ::token/eof))
     (update p :current inc)
     p))
+
+(defn synchronize [parser]
+  (let [advanced (advance parser)
+        current-token-type (token-type parser)
+        next-token-type (token-type advanced)]
+    (if (or (= next-token-type ::token/eof) (= current-token-type ::token/semicolon))
+      advanced
+      (condp = next-token-type
+        ::token/class advanced
+        ::token/fun advanced
+        ::token/var advanced
+        ::token/for advanced
+        ::token/if advanced
+        ::token/while advanced
+        ::token/print advanced
+        ::token/return advanced
+        (recur advanced)))))
 
 (defn- consume [parser expected-token-type]
   (if-not (= expected-token-type (token-type parser))
@@ -34,10 +51,10 @@
     (advance parser)))
 
 (defn- primary-grouping [parser]
-  (let [exp (expression parser)]
+  (let [exp (comma parser)]
     (append-expr (consume exp ::token/right-paren) (ast/grouping (:expr exp)))))
 
-(defn primary [parser]
+(defn- primary [parser]
   (let [token (current parser)
         token-type (::token/type token)
         value (::token/literal token)
@@ -65,43 +82,11 @@
 (defn factor [parser]
   (binary-fn parser #{::token/star ::token/slash} unary))
 
-  ; (loop [p (unary parser)]
-  ;   (let [token (current p)
-  ;         token-type (::token/type token)
-  ;         advanced (advance p)
-  ;         lhs (:expr p)]
-  ;     (if (or (= token-type ::token/star)
-  ;             (= token-type ::token/slash))
-  ;       (recur (append-expr (unary advanced) (ast/binary lhs token (:expr (unary advanced)))))
-  ;       p))))
-  ;
 (defn term [parser]
   (binary-fn parser #{::token/plus ::token/minus} factor))
 
-  ; (loop [p (factor parser)]
-  ;   (let [token (current p)
-  ;         token-type (::token/type token)
-  ;         advanced (advance p)
-  ;         lhs (:expr p)]
-  ;     (if (or (= token-type ::token/minus)
-  ;             (= token-type ::token/plus))
-  ;       (recur (append-expr (factor advanced) (ast/binary lhs token (:expr (factor advanced)))))
-  ;       p))))
-
 (defn comparison [parser]
   (binary-fn parser #{::token/greater-equal ::token/greater ::token/less-equal ::token/less} term))
-
-  ; (loop [p (term parser)]
-  ;   (let [token (current p)
-  ;         token-type (::token/type token)
-  ;         advanced (advance p)
-  ;         lhs (:expr p)]
-  ;     (if (or (= token-type ::token/greater-equal)
-  ;             (= token-type ::token/greater)
-  ;             (= token-type ::token/less-equal)
-  ;             (= token-type ::token/less))
-  ;       (recur (append-expr (term advanced) (ast/binary lhs token (:expr (term advanced)))))
-  ;       p))))
 
 (defn- binary-fn [parser token-set downwardfn]
   (loop [p (downwardfn parser)]
@@ -117,19 +102,33 @@
 
 (defn equality [parser]
   (binary-fn parser #{::token/equal-equal ::token/bang-equal} comparison))
-  ; (loop [p (comparison parser)]
-  ;   (let [token (current p)
-  ;         token-type (::token/type token)
-  ;         advanced (advance p)
-  ;         lhs (:expr p)]
-  ;     (if (or (= token-type ::token/equal-equal) (= token-type ::token/bang-equal))
-  ;       (let [right (comparison advanced)
-  ;             right-expr (:expr right)]
-  ;         (recur (append-expr right (ast/binary lhs token right-expr))))
-  ;       p))))
-  ;
+
 (defn expression [parser] (equality parser))
 
+(defn comma [parser]
+  (binary-fn parser #{::token/comma} expression))
+
+(defn parse [tokens]
+  (let [parser (new-parser tokens)]
+    (try
+      (:expr (comma parser))
+      (catch Exception e
+        (do
+          (println e)
+          nil)))))
+
+; Precedence level in inversely propoertionate to the order of the code
+;; expression     → equality ;
+;; equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+;; comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+;; term           → factor ( ( "-" | "+" ) factor )* ;
+;; factor         → unary ( ( "/" | "*" ) unary )* ;
+;; unary          → ( "!" | "-" ) unary
+;;                | primary ;
+;; primary        → NUMBER | STRING | "true" | "false" | "nil"
+;;                | "(" expression ")" ;
+;; Here factor has a higher precedence over term
+;;
 (comment
   (require
    '[athosone.prettyprinter :refer [pretty-print]]
@@ -141,7 +140,10 @@
   (def tokens (scan-tokens (new-scanner source)))
   (def p (new-parser tokens))
 
+  (pretty-print (parse tokens))
+  (synchronize p)
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * -1 - -2 == 3"))))))
+  (pretty-print (:expr (parse (scan-tokens (new-scanner "(1,2,3)")))))
   ; "(== (- (* 1.0 (group (+ (- 1.0) (- 1.0)))) (- 2.0)) 3.0)"
   ; "(== (- (* 1.0 (group (+ (- 1.0) (- 1.0)))) (- 2.0)) 3.0)"
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * (-1 + -1) - -2 == 3"))))))

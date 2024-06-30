@@ -1,5 +1,7 @@
 (ns athosone.lox
   (:require
+   [athosone.parser :as parser]
+   [athosone.prettyprinter :refer [pretty-print]]
    [athosone.reporter.error :refer [error had-error reset-error]]
    [athosone.scanner.scan :refer [new-scanner scan-tokens]]))
 
@@ -9,9 +11,9 @@
 
 (defn run [source]
   (let [scanner (new-scanner source)
-        tokens (scan-tokens scanner)]
-    (doseq [t tokens]
-      (println t))))
+        tokens (scan-tokens scanner)
+        p (parser/parse tokens)]
+    (println (pretty-print p))))
 
 (defn run-file [path]
   (let [source (slurp path)]
