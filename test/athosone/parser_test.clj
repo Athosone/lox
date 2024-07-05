@@ -39,3 +39,11 @@
       (is (= (:type expr) ::ast/literal))
       (is (= (::ast/value expr)  1.0)))))
 
+(deftest unary-bang
+  (testing "Given a bang unary when parsing the create a banged unary element"
+    (let [p (parser-from-str "!true")
+          parsed (parser/expression p)
+          expr (:expr parsed)
+          t (::ast/operator expr)]
+      (is (= (:type expr) ::ast/unary))
+      (is (= (::ast/value expr)  nil)))))

@@ -73,7 +73,7 @@
         token-type (::token/type token)
         advanced (advance parser)]
     (if (or (= token-type ::token/minus)
-            (= token-type ::token/banq))
+            (= token-type ::token/bang))
       (let [right (unary advanced)
             expr (:expr right)]
         (append-expr right (ast/unary token expr)))
@@ -142,8 +142,8 @@
 
   (pretty-print (parse tokens))
   (synchronize p)
+  (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "!true"))))))
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * -1 - -2 == 3"))))))
-  (pretty-print (:expr (parse (scan-tokens (new-scanner "(1,2,3)")))))
   ; "(== (- (* 1.0 (group (+ (- 1.0) (- 1.0)))) (- 2.0)) 3.0)"
   ; "(== (- (* 1.0 (group (+ (- 1.0) (- 1.0)))) (- 2.0)) 3.0)"
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * (-1 + -1) - -2 == 3"))))))
