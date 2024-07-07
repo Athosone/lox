@@ -155,6 +155,7 @@
   (:current (expression p))
   (:expr (unary p))
   (primary (new-parser (scan-tokens (new-scanner "1 + 1"))))
+  (parse (scan-tokens (new-scanner "a + b")))
   (:expr (unary (new-parser (scan-tokens (new-scanner "-1 * 1")))))
   (:expr (factor (new-parser (scan-tokens (new-scanner "-1 * -1 / 0")))))
   (factor (new-parser (scan-tokens (new-scanner "-1 * 1 / 0"))))

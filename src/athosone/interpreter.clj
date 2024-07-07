@@ -21,6 +21,28 @@
       ::token/bang (not (is-truthy? rhs))
       rhs)))
 
+(defn- plus-operator [left right]
+  (if (and (instance? Double left) (instance? Double right))
+    (+ left right)
+    (str left right)))
+
+(defmethod interpret ::ast/binary [{::ast/keys [lhs operator rhs]}]
+  (let [left (interpret lhs)
+        right (interpret rhs)
+        t (::token/type operator)]
+    (condp = t
+      ::token/greater (> left right)
+      ::token/greater-equal (>= left right)
+      ::token/less (< left right)
+      ::token/less-equal (<= left right)
+      ::token/slash (/ left right)
+      ::token/minus (- left right)
+      ::token/star (* left right)
+      ::token/plus (plus-operator left right)
+      ::token/equal-equal (= left right)
+      ::token/bang-equal (not= left right)
+      nil)))
+
 (defn- is-truthy? [value]
   (cond
     (nil? value) false
@@ -34,7 +56,9 @@
            '[athosone.parser :as parser :refer [parse]]
            '[athosone.scanner.scan :refer [scan-tokens new-scanner]])
 
+  (str 1 2)
   (interpret (parse (scan-tokens (new-scanner "---123.4"))))
+  (interpret (parse (scan-tokens (new-scanner "\"z\"+\"abc\""))))
   (interpret (parse (scan-tokens (new-scanner "!(false)"))))
 
   ())
