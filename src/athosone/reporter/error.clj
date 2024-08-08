@@ -2,6 +2,7 @@
   (:require [athosone.scanner.token :as token]))
 
 (def had-error (atom false))
+(def had-runtime-error (atom false))
 
 (defn- report [line where msg]
   (reset! had-error true)
@@ -21,3 +22,6 @@
 (defn reset-error []
   (reset! had-error false))
 
+(defn runtime-error [{:keys [msg token] :as error}] 
+  (reset! had-runtime-error true)
+  (println ;; TODO))

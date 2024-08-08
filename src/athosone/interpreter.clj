@@ -2,32 +2,33 @@
   (:require
    [athosone.ast :as ast]
    [athosone.scanner.token :as token]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [athosone.reporter.error :as error]))
 
 (declare is-truthy?)
 (declare plus-operator)
 (declare assert-number)
 (declare assert-numbers)
 
-(defmulti interpret :type)
+(defmulti evaluate :type)
 
-(defmethod interpret ::ast/literal [{::ast/keys [value]}]
+(defmethod evaluate ::ast/literal [{::ast/keys [value]}]
   value)
 
-(defmethod interpret ::ast/grouping [{::ast/keys [expression]}]
-  (interpret expression))
+(defmethod evaluate ::ast/grouping [{::ast/keys [expression]}]
+  (evaluate expression))
 
-(defmethod interpret ::ast/unary [{::ast/keys [operator right]}]
-  (let [rhs (interpret right)
+(defmethod evaluate ::ast/unary [{::ast/keys [operator right]}]
+  (let [rhs (evaluate right)
         partial-assert (partial assert-numbers operator)]
     (condp = (::token/type operator)
       ::token/minus (last ((juxt partial-assert -) rhs))
       ::token/bang (not (is-truthy? rhs))
       rhs)))
 
-(defmethod interpret ::ast/binary [{::ast/keys [lhs operator rhs]}]
-  (let [left (interpret lhs)
-        right (interpret rhs)
+(defmethod evaluate ::ast/binary [{::ast/keys [lhs operator rhs]}]
+  (let [left (evaluate lhs)
+        right (evaluate rhs)
         t (::token/type operator)]
     (when-not (#{::token/plus ::token/equal-equal ::token/bang-equal} t)
       ;; (prn operator lhs rhs))
@@ -45,11 +46,22 @@
       ::token/bang-equal (not= left right)
       nil)))
 
+(defn interpret [expr]
+  (try
+    (let [value (evaluate expr)]
+      (println (str value))
+      value)
+    (catch Exception e
+      (case (:type (ex-data e))
+        :runtime-error
+        (athosone.reporter.error/runtime-error e)))))
+
 (defn- assert-numbers [operator & n]
   (when-not (every? number? n)
     (throw (ex-info "Operands must be a number"
-                    {:cause "Passed numbers aren't numbers"
-                     :operator operator
+                    {:type :runtime-error
+                     :msg "Passed numbers aren't numbers"
+                     :token operator
                      :numbers (apply str n)}))))
 
 (defn- plus-operator [left right]
@@ -73,14 +85,15 @@
   (str 1 2)
   (def x 1)
   ((comp (partial assert-number "toto") -) 1)
+  (assert-number "1")
 
   (#{1, 2} 4)
-  (interpret (parse (scan-tokens (new-scanner "---\"a\""))))
-  (interpret (parse (scan-tokens (new-scanner "---123.4"))))
-  (interpret (parse (scan-tokens (new-scanner "1<\"1\""))))
-  (interpret (parse (scan-tokens (new-scanner "1<1"))))
-  (interpret (parse (scan-tokens (new-scanner "\"1\"==\"1\""))))
-  (interpret (parse (scan-tokens (new-scanner "\"z\"+\"abc\""))))
-  (interpret (parse (scan-tokens (new-scanner "!(false)"))))
+  (evaluate (parse (scan-tokens (new-scanner "---\"a\""))))
+  (evaluate (parse (scan-tokens (new-scanner "---123.4"))))
+  (evaluate (parse (scan-tokens (new-scanner "1<\"1\""))))
+  (evaluate (parse (scan-tokens (new-scanner "1<1"))))
+  (evaluate (parse (scan-tokens (new-scanner "\"1\"==\"1\""))))
+  (evaluate (parse (scan-tokens (new-scanner "\"z\"+\"abc\""))))
+  (evaluate (parse (scan-tokens (new-scanner "!(false)"))))
 
   ())
