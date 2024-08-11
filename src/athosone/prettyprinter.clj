@@ -6,6 +6,9 @@
 
 (defmulti pretty-print :type)
 
+(defmethod pretty-print :default []
+  (println))
+
 (defn parentesize [name & expressions]
   (str "(" name " " (map pretty-print expressions) ")"))
 

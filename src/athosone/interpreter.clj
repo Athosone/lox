@@ -53,14 +53,14 @@
       value)
     (catch Exception e
       (case (:type (ex-data e))
-        :runtime-error
-        (athosone.reporter.error/runtime-error e)))))
+        :runtime-error (athosone.reporter.error/runtime-error (ex-data e))
+        (throw e)))))
 
 (defn- assert-numbers [operator & n]
   (when-not (every? number? n)
     (throw (ex-info "Operands must be a number"
                     {:type :runtime-error
-                     :msg "Passed numbers aren't numbers"
+                     :msg "Operands must be a number"
                      :token operator
                      :numbers (apply str n)}))))
 
@@ -88,12 +88,12 @@
   (assert-number "1")
 
   (#{1, 2} 4)
-  (evaluate (parse (scan-tokens (new-scanner "---\"a\""))))
-  (evaluate (parse (scan-tokens (new-scanner "---123.4"))))
-  (evaluate (parse (scan-tokens (new-scanner "1<\"1\""))))
-  (evaluate (parse (scan-tokens (new-scanner "1<1"))))
-  (evaluate (parse (scan-tokens (new-scanner "\"1\"==\"1\""))))
-  (evaluate (parse (scan-tokens (new-scanner "\"z\"+\"abc\""))))
-  (evaluate (parse (scan-tokens (new-scanner "!(false)"))))
+  (interpret (parse (scan-tokens (new-scanner "---\"a\""))))
+  (interpret (parse (scan-tokens (new-scanner "---123.4"))))
+  (interpret (parse (scan-tokens (new-scanner "1<\"1\""))))
+  (interpret (parse (scan-tokens (new-scanner "1<1"))))
+  (interpret (parse (scan-tokens (new-scanner "\"1\"==\"1\""))))
+  (interpret (parse (scan-tokens (new-scanner "\"z\"+\"abc\""))))
+  (interpret (parse (scan-tokens (new-scanner "!(false)"))))
 
   ())

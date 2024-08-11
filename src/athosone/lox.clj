@@ -1,8 +1,10 @@
 (ns athosone.lox
   (:require
+   [athosone.interpreter :refer [interpret]]
    [athosone.parser :as parser]
    [athosone.prettyprinter :refer [pretty-print]]
-   [athosone.reporter.error :refer [error had-error reset-error]]
+   [athosone.reporter.error :refer [error had-error had-runtime-error
+                                    reset-error]]
    [athosone.scanner.scan :refer [new-scanner scan-tokens]]))
 
 (defn print-fl [msg]
@@ -13,11 +15,15 @@
   (let [scanner (new-scanner source)
         tokens (scan-tokens scanner)
         p (parser/parse tokens)]
-    (println (pretty-print p))))
+    (println (pretty-print p))
+    (interpret p)))
 
 (defn run-file [path]
   (let [source (slurp path)]
     (run source)
+    (if @had-runtime-error
+      (System/exit 70)
+      (System/exit 0))
     (if @had-error
       (System/exit 65)
       (System/exit 0))))
