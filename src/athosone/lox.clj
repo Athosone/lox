@@ -15,8 +15,10 @@
   (let [scanner (new-scanner source)
         tokens (scan-tokens scanner)
         p (parser/parse tokens)]
-    (println (pretty-print p))
-    (interpret p)))
+    (if (= nil p)
+      (println p)
+      (do (println (pretty-print p))
+          (interpret p)))))
 
 (defn run-file [path]
   (let [source (slurp path)]
