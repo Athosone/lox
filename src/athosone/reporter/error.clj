@@ -22,7 +22,7 @@
 (defn reset-error []
   (reset! had-error false))
 
-(defn runtime-error [{:keys [msg token] :as error}]
+(defn runtime-error! [{:keys [msg token] :as error}]
   (reset! had-runtime-error true)
   (let [line (::token/line token)]
     (printf "%s\n[line %d]" msg, line)))

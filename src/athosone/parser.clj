@@ -10,12 +10,17 @@
 (declare binary-fn)
 
 (defn new-parser [tokens]
-  {:tokens tokens :current 0 :expr nil})
+  {:tokens tokens
+   :statements []
+   :current 0
+   :expr nil})
 
 (defn- current [{:keys [current tokens]}]
   (tokens current))
 
 (defn- token-type [parser] (::token/type (current parser)))
+
+(defn- at-end? [parser] (= (::token/type (current parser)) ::token/eof))
 
 (defn- append-expr [parser expr] (assoc-in parser [:expr] expr))
 
@@ -108,14 +113,29 @@
 (defn comma [parser]
   (binary-fn parser #{::token/comma} expression))
 
+(defn- match? [parser token-type])
+
+(defn- print-statement [parser])
+
+(defn statement [parser]
+  (cond
+    (match? parser ::token/print) (print-statement parser)
+    :else (comma parser)))
+
 (defn parse [tokens]
-  (let [parser (new-parser tokens)]
-    (try
-      (:expr (comma parser))
-      (catch Exception e
-        (do
-          (println e)
-          nil)))))
+  (loop [parser (new-parser tokens)]
+    (if (at-end? parser)
+      [(:statements parser)]
+      (recur (statement parser)))))
+
+;; (defn parse [tokens]
+;;   (let [parser (new-parser tokens)]
+;;     (try
+;;       (:expr (comma parser))
+;;       (catch Exception e
+;;         (do
+;;           (println e)
+;;           nil)))))
 
 ; Precedence level in inversely propoertionate to the order of the code
 ;; expression     → equality ;

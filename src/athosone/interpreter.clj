@@ -53,7 +53,7 @@
       value)
     (catch Exception e
       (case (:type (ex-data e))
-        :runtime-error (athosone.reporter.error/runtime-error (ex-data e))
+        :runtime-error (athosone.reporter.error/runtime-error! (ex-data e))
         (throw e)))))
 
 (defn- assert-numbers [operator & n]
