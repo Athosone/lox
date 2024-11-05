@@ -24,6 +24,8 @@
 
 (defn- append-expr [parser expr] (assoc-in parser [:expr] expr))
 
+(defn- append-stmt [parser stmt] (update-in parser [:statements] conj stmt))
+
 (defn- advance [p]
   (if (not (= (token-type p) ::token/eof))
     (update p :current inc)
@@ -113,14 +115,23 @@
 (defn comma [parser]
   (binary-fn parser #{::token/comma} expression))
 
-(defn- match? [parser token-type])
+(defn- match? [parser tt]
+  (= (token-type parser) tt))
 
-(defn- print-statement [parser])
+(defn- print-statement [parser]
+  (let [expr (:expr (comma parser))
+        advanced (consume parser ::token/semicolon)]
+    (append-stmt advanced {:stmt/print expr})))
+
+(defn- expression-statement [parser]
+  (let [expr (:expr (comma parser))
+        advanced (consume parser ::token/semicolon)]
+    (append-stmt advanced {:stmt/expr expr})))
 
 (defn statement [parser]
   (cond
     (match? parser ::token/print) (print-statement parser)
-    :else (comma parser)))
+    :else (expression-statement parser)))
 
 (defn parse [tokens]
   (loop [parser (new-parser tokens)]
@@ -172,6 +183,7 @@
   (prn p)
   (assoc-in p [:expr] "hellp")
 
+  (assoc-in (comma p) [:expr] "toto")
   (:current (expression p))
   (:expr (unary p))
   (primary (new-parser (scan-tokens (new-scanner "1 + 1"))))
