@@ -181,11 +181,12 @@
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * (-1 + -1) - -2 == 3"))))))
 
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "-9 - (1 + 1 * (1 / 2)"))))))
-  (scan-tokens (new-scanner "print 1;"))
-  (-> "print 1;"
-      new-scanner
-      scan-tokens
-      parse)
+  (scan-tokens (new-scanner "print 1 == 1;"))
+  (flatten (-> "print 1 == 1;
+               1 == 1;"
+               new-scanner
+               scan-tokens
+               parse))
 
   (assoc-in (comma p) [:expr] "toto")
   (:current (expression p))

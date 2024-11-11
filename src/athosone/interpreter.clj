@@ -46,15 +46,36 @@
       ::token/bang-equal (not= left right)
       nil)))
 
-(defn interpret [expr]
+(defmulti execute (fn [x] (first (keys x))))
+
+(defmethod execute :stmt/print [stmt]
+  (let [value (evaluate (:stmt/print stmt))]
+    (println (str value))))
+
+(defmethod execute :stmt/expr [stmt]
+  (evaluate (:stmt/expr stmt)))
+
+(defmethod execute :default [stmt]
+  (println "Unknown statement: " stmt))
+
+(defn interpret [stmts]
   (try
-    (let [value (evaluate expr)]
-      (println (str value))
-      value)
+    (for [stmt stmts]
+      (execute stmt))
     (catch Exception e
       (case (:type (ex-data e))
         :runtime-error (athosone.reporter.error/runtime-error! (ex-data e))
         (throw e)))))
+
+;; (defn interpret [expr]
+;;   (try
+;;     (let [value (evaluate expr)]
+;;       (println (str value))
+;;       value)
+;;     (catch Exception e
+;;       (case (:type (ex-data e))
+;;         :runtime-error (athosone.reporter.error/runtime-error! (ex-data e))
+;;         (throw e)))))
 
 (defn- assert-numbers [operator & n]
   (when-not (every? number? n)
@@ -82,18 +103,13 @@
            '[athosone.parser :as parser :refer [parse]]
            '[athosone.scanner.scan :refer [scan-tokens new-scanner]])
 
-  (str 1 2)
-  (def x 1)
+  (-> "1 == 1;
+      print 1;"
+      new-scanner
+      scan-tokens
+      parse
+      first
+      interpret)
   ((comp (partial assert-number "toto") -) 1)
-  (assert-number "1")
-
-  (#{1, 2} 4)
-  (interpret (parse (scan-tokens (new-scanner "---\"a\""))))
-  (interpret (parse (scan-tokens (new-scanner "---123.4"))))
-  (interpret (parse (scan-tokens (new-scanner "1<\"1\""))))
-  (interpret (parse (scan-tokens (new-scanner "1<1"))))
-  (interpret (parse (scan-tokens (new-scanner "\"1\"==\"1\""))))
-  (interpret (parse (scan-tokens (new-scanner "\"z\"+\"abc\""))))
-  (interpret (parse (scan-tokens (new-scanner "!(false)"))))
 
   ())
