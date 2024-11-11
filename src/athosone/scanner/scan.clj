@@ -80,6 +80,7 @@
       (= c \-) (add-token ::token/minus scanner)
       (= c \+) (add-token ::token/plus scanner)
       (= c \*) (add-token ::token/star scanner)
+      (= c \;) (add-token ::token/semicolon scanner)
       (= c \!) (if (match scanner \=)
                  (add-token ::token/bang-equal (advance scanner))
                  (add-token ::token/bang scanner))

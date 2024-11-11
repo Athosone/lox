@@ -119,18 +119,20 @@
   (= (token-type parser) tt))
 
 (defn- print-statement [parser]
-  (let [expr (:expr (comma parser))
-        advanced (consume parser ::token/semicolon)]
+  (let [parsed (comma parser)
+        expr (:expr parsed)
+        advanced (consume parsed ::token/semicolon)]
     (append-stmt advanced {:stmt/print expr})))
 
 (defn- expression-statement [parser]
-  (let [expr (:expr (comma parser))
-        advanced (consume parser ::token/semicolon)]
+  (let [parsed (comma parser)
+        expr (:expr parsed)
+        advanced (consume parsed ::token/semicolon)]
     (append-stmt advanced {:stmt/expr expr})))
 
 (defn statement [parser]
   (cond
-    (match? parser ::token/print) (print-statement parser)
+    (match? parser ::token/print) (print-statement (consume parser ::token/print))
     :else (expression-statement parser)))
 
 (defn parse [tokens]
@@ -167,12 +169,11 @@
   (if (#{"toto" "tata"} "toto")
     (println "yes")
     (println "no"))
-  (def source "1 == 1")
+  (def source "1 == 1;")
   (def tokens (scan-tokens (new-scanner source)))
-  (def p (new-parser tokens))
+  (def parser (new-parser tokens))
+  (parse tokens)
 
-  (pretty-print (parse tokens))
-  (synchronize p)
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "!true"))))))
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * -1 - -2 == 3"))))))
   ; "(== (- (* 1.0 (group (+ (- 1.0) (- 1.0)))) (- 2.0)) 3.0)"
@@ -180,8 +181,11 @@
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "1 * (-1 + -1) - -2 == 3"))))))
 
   (pretty-print (:expr (expression (new-parser (scan-tokens (new-scanner "-9 - (1 + 1 * (1 / 2)"))))))
-  (prn p)
-  (assoc-in p [:expr] "hellp")
+  (scan-tokens (new-scanner "print 1;"))
+  (-> "print 1;"
+      new-scanner
+      scan-tokens
+      parse)
 
   (assoc-in (comma p) [:expr] "toto")
   (:current (expression p))
